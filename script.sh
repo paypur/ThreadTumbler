@@ -18,19 +18,22 @@ stop() {
 }
 
 trap stop EXIT
-#y-cruncher stress -M:8g &
 
+y-cruncher stress 2>&1 | tee outfile &
 
 # TODO: kill all process except for one to maybe reduce context switching
 
-# shellcheck disable=SC2159
-while [ 0 ]; do
-    if [ "$(cat /sys/devices/system/cpu/smt/active)" -eq 1 ]; then
-        taskset -apc "${arr[$index]},${arr[$index+1]}" "$(pgrep -f /usr/lib/y-cruncher/Binaries/)"
-        index=$(((index+2)%core_count))
-    else
-        taskset -apc $index "$(pgrep -f /usr/lib/y-cruncher/Binaries/)"
-        index=$(((index+1)%core_count))
-    fi
-    sleep $tumble_time
-done
+if tail -f outfile | grep -Eq "Allocating Memory..."; then
+    echo "setting affinity"
+    # shellcheck disable=SC2159
+    while [ 0 ]; do
+       if [ "$(cat /sys/devices/system/cpu/smt/active)" -eq 1 ]; then
+           taskset -apc "${arr[$index]},${arr[$index+1]}" "$(pgrep -f /usr/lib/y-cruncher/Binaries/)"
+           index=$(((index+2)%core_count))
+       else
+           taskset -apc $index "$(pgrep -f /usr/lib/y-cruncher/Binaries/)"
+           index=$(((index+1)%core_count))
+       fi
+       sleep $tumble_time
+   done
+fi
