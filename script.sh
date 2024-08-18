@@ -18,10 +18,11 @@ stop() {
 
 trap stop EXIT
 
-y-cruncher stress -M:8g -D:5 2>&1 | tee logfile &
+y-cruncher stress -M:8g -D:60 2>&1 | tee log.txt &
 
 while [ 0 ]; do
-    if tail -f -n 1 logfile | grep -Eq "Iteration:"; then
+    if tail -f -n 1 log.txt | grep -Eq "Iteration:"; then
+        echo "Testing physical core $index" >> log.txt # TODO: doesnt work
         # shellcheck disable=SC2159
         if [ "$(cat /sys/devices/system/cpu/smt/active)" -eq 1 ]; then
             taskset -apc "${arr[$index]},${arr[$index+1]}" "$(pgrep -f /usr/lib/y-cruncher/Binaries/)" &> /dev/null
