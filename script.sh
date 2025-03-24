@@ -2,7 +2,7 @@
 
 [ "$UID" -eq 0 ] || (echo "sudo is required" && exec sudo bash "$0" "$@")
 
-log_file="log-$(date +"%Y-%m-%d-%T").txt"
+log_file="$(date +"%Y-%m-%d-%T").log"
 core_count=$(nproc)
 index=0
 
@@ -26,14 +26,14 @@ trap stop EXIT
 touch "$log_file"
 chmod 777 "$log_file"
 
-y-cruncher config cfg/1t.cfg 2>&1 | tee -a "$log_file" &
-
-# shellcheck disable=SC2159
-while [ 0 ]; do
-    if tail -f -n 1 "$log_file" | grep -Eq "Iteration:"; then
-        printf "\nTesting physical core %s\n" "$index" >> "$log_file"
-        printf "\nTesting physical core %s\n" "$index"
+y-cruncher config cfg/1t.cfg 2>&1 | while read -r line; do
+    echo "$line"
+    if echo "$line" | grep -Eq "Iteration:"; then
+        printf "Testing Logical Core %s\n" "$index" | tee -a "$log_file"
+        echo "$line" | ansi2txt >> "$log_file"
         taskset -apc $index "$(pgrep -f /usr/lib/y-cruncher/Binaries/)" &> /dev/null
         index=$(((index+1)%core_count))
+    elif echo "$line" | grep -Eq "Passed"; then
+        echo "$line" | ansi2txt >> "$log_file"
     fi
 done
