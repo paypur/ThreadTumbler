@@ -1,6 +1,10 @@
 #!/bin/bash
 
-[ "$UID" -eq 0 ] || (echo "sudo is required" && exec sudo bash "$0" "$@")
+if [ "$UID" -ne 0 ]; then
+  echo "sudo is required"
+  exec sudo bash "$0" "$@"
+  exit $?
+fi
 
 log_file="$(date +"%Y-%m-%d-%T").log"
 core_count=$(nproc)
