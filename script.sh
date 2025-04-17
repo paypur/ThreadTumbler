@@ -6,9 +6,10 @@ if [ "$UID" -ne 0 ]; then
   exit $?
 fi
 
-log_file="$(date +"%Y-%m-%d-%T").log"
-core_count=$(nproc)
+log_file="$(date+"%Y-%m-%d_%T").log"
 index=0
+
+core_array=(0 1 2 3 4 5 6 7)
 
 #if [ "$(cat /sys/devices/system/cpu/smt/active)" -eq 1 ]; then
 #    core_count=("$core_count"/2)
@@ -30,14 +31,15 @@ trap stop EXIT
 touch "$log_file"
 chmod 777 "$log_file"
 
+# TODO: option for SMT
 y-cruncher config cfg/1t.cfg 2>&1 | while read -r line; do
-    echo "$line"
     if echo "$line" | grep -Eq "Iteration:"; then
-        printf "Testing Logical Core %s\n" "$index" | tee -a "$log_file"
+        printf "Physical Logical Core %s\n" "${core_array[$index]}" | tee -a "$log_file"
         echo "$line" | ansi2txt >> "$log_file"
-        taskset -apc $index "$(pgrep -f /usr/lib/y-cruncher/Binaries/)" &> /dev/null
-        index=$(((index+1)%core_count))
+        taskset -apc "${core_array[$index]}" "$(pgrep -f /usr/lib/y-cruncher/Binaries/)" &> /dev/null
+        index=$(((index+1)%${#core_array[@]}))
     elif echo "$line" | grep -Eq "Passed"; then
         echo "$line" | ansi2txt >> "$log_file"
     fi
+    echo "$line"
 done
